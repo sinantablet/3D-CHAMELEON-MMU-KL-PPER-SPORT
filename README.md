@@ -1,8 +1,39 @@
 
-3D chameleoan için Akıllı Çoklu Filament Yönetim Sistemi (MMU) Yapılandırma ve Güvenlik Protokolleri
-Akıllı Çoklu Filament Yönetim Sistemi (MMU) Yapılandırma ve Güvenlik Protokolleri
+Klipper Tabanlı Akıllı Çoklu Filament Yönetim Sistemi (MMU)
+Bu proje; stock chameleon elektronik kontrol kartına ihtiyaç duymadan, yalnızca 1 adet standart 3D yazıcı anakartı, 6 adet mikro-anahtar (switch/sensör) ve 1 adet mekanik filament kesici kullanarak Klipper üzerinde çalışan 4 renkli (T0-T3) akıllı bir filament yönetim sistemi modifikasyonudur.
+
+Sistem; baskı güvenliğini artırmak, tıkanmaları önlemek ve renk geçişleri ile baskı sonunu tamamen otomatikleştirmek için tasarlanmıştır.
+
+🛠 Donanım Mimarisi ve Sensör Yerleşimi
+Sistemde kullanılan 6 adet optik veya mekanik siviç, anakart üzerindeki boş endstop (limit anahtarı) pinlerine bağlanır. Sensörlerin fiziksel konumları ve görevleri şu şekildedir:
+
+A. Takım Giriş Sensörleri (4 Adet)
+Konum: T0, T1, T2 ve T3 filament hatlarının tam giriş noktaları.
+
+Görevi: Hangi takıma manuel filament yüklendiğini algılar, otomatik motor senkronizasyonunu başlatır ve ilgili hattaki filamentin bitip bitmediğini (Runout) kontrol eder.
+
+B. Extruder Giriş Sensörü (1 Adet)
+Konum: Extruder dişlilerinin hemen girişi (Hotend öncesi).
+
+Görevi: Takımlardan gelen filamentin extruder girişine başarıyla ulaştığını doğrular.
+
+C. Extruder Çıkış Sensörü (1 Adet)
+Konum: Extruder dişlilerinin hemen çıkışı.
+
+Görevi: Baskı esnasında gerçek zamanlı malzeme akışını izler. Motor döndüğü halde buradan filament geçmiyorsa, makara takılması veya patinaj (sıkışma) durumunu algılayarak sistemi kurtarma moduna alır.
+
+D. Mekanik Filament Kesici (1 Adet)
+Konum: Extruder mekanizmasının hemen altı (Hotend girişinin üstü).
+
+Görevi: Baskı bittiğinde veya renk değişimlerinde filament ucunu keserek pürüzsüz bir tahliye sağlar; hotend içinde malzeme donmasını ve tıkanmayı engeller.
+
+🚀 6 Aşamalı Akıllı Çalışma Mantığı
+Sistem, Klipper makroları ve bu 6 sensörün anlık durum bilgileriyle tamamen otomatik bir döngü yönetir:
 
 Bu sistem; çok renkli ve çok malzemeli (Multi-Material) 3D yazıcı ekosistemlerinde, baskı sürecinin kesintisiz sürmesini sağlamak, kullanıcı hatalarını en aza indirmek, donanım güvenliğini korumak ve baskı sonrasını tamamen otomatikleştirmek adına geliştirilmiş altı aşamalı bir akıllı yönetim mimarisine sahiptir.
+
+
+
 
 1. Başlangıç Kalibrasyonu ve Güvenli Tahliye Protokolü
 
@@ -26,5 +57,21 @@ Yazdırma işlemi esnasında filament varlığı, sadece giriş anında değil, 
 6. Otomatik Baskı Sonu Boşaltma ve Sonraki Baskıya Hazırlık Protokolü
 Baskı başarıyla tamamlandığı an, sistem eritme potasını ve filament yolunu bir sonraki işe sıfır hata ile hazırlamak için TOOL_OUT makrosunu tetikler. Bu protokol sırasıyla; filament kesme (filament cut) mekanizmasını çalıştırır, extruder içinde kalan erimiş veya kesilmiş malzemeyi tahliye eder (extruder unload) ve son olarak aktif olan takım hangisi ise o takıma ait filamenti güvenli başlangıç (home) konumuna geri çeker. Böylece bir sonraki baskı öncesinde elle müdahaleye gerek kalmaz.
 
-TOOL_OUT Dilimleyici (Slicer) Entegrasyonu
-Bu akıllı bitiş protokolünün sorunsuz çalışabilmesi için dilimleyici yazılımınızın (OrcaSlicer, PrusaSlicer veya Bambu Studio) Bitiş G-Kodu (End G-code) alanına eklenmesi gerekir.
+Filament Cut: Mekanik kesici aktif hat üzerindeki filamenti keser.
+
+Extruder Unload: Extruder içinde kalan parça eritilerek tahliye edilir.
+
+Tool Park: Aktif olan takım hangisi ise, o hattın filamenti bir sonraki baskıya hazır olmak üzere kendi başlangıç konumuna geri çekilir.
+
+
+
+🎛 Dilimleyici (Slicer) Kurulumu
+
+Sistemin baskı ilk başladığında donanımı ve filament yollarını senkronize eden akıllı protokolümüz TOOL_INIT makrosudur.
+(OrcaSlicer, PrusaSlicer, Bambu Studio vb.) Printer Settings -> start g-code  ( TOOL_INIT )
+Sistemin baskı sonu otomasyonunu tetikleyebilmesi için dilimleyici yazılımınızın (OrcaSlicer, PrusaSlicer, Bambu Studio vb.) Printer Settings -> end g-code  ( TOOL_OUT  TS0 )
+
+yazıcı ayarlarından -> çoklu malzeme -> tek extruder çoklu mazleme kurulumu
+çoklu mazleme sekmesinden -> pirme kulesini aktif edin.
+
+
