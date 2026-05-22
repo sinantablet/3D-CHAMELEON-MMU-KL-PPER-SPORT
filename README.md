@@ -65,6 +65,200 @@ Tool Park: Aktif olan takım hangisi ise, o hattın filamenti bir sonraki baskı
 
 
 
+
+MAKRO AYAR VE DEĞERLERİ
+
+--------------------------------------------------------------------------------
+
+
+pin çıkışlarını kendi bord unuza göe ayarlayınız
+
+[manual_stepper selector]
+step_pin: nano:PE0
+dir_pin: nano:PB9
+microsteps: 1
+rotation_distance: 2
+enable_pin: !nano:PE1
+endstop_pin: !nano:PA2  
+velocity: 20      
+accel: 20      
+position_endstop: 15
+
+[manual_stepper chameleon]
+step_pin: nano:PB5
+dir_pin: nano:PB4
+microsteps: 16
+rotation_distance: 41
+enable_pin: !nano:PB8
+endstop_pin: nano:PE6   ( bu pin önemli CHAMELEON_EXTRUDER_SMART_LOAD buradaki pine edn step yaparak filament konumu ayaralıyor)
+position_endstop: 0
+
+sensör pinleriniz anakartınıza göre ayarlayınız..
+
+
+[filament_switch_sensor tool_0_sensor]
+switch_pin: nano:PA15
+pause_on_runout: True
+
+[filament_switch_sensor tool_1_sensor]
+switch_pin: nano:PA12
+pause_on_runout: True
+
+[filament_switch_sensor tool_2_sensor]
+switch_pin: nano:PA14
+pause_on_runout: True
+
+[filament_switch_sensor tool_2_sensor]
+switch_pin: nano:PA13
+pause_on_runout: True
+
+[filament_switch_sensor mmu_check]
+switch_pin: nano:PB2
+pause_on_runout: False
+
+
+--------------------------------------------------------------------------------
+
+
+[gcode_macro TOOL_INIT]
+description: Homes the tool selector. Needed before any tool change.
+variable_tool: 0
+variable_ysplit_distance: 100
+variable_chameleon_speed: 40
+variable_chameleon_acc: 40
+gcode:
+  MANUAL_STEPPER STEPPER=selector SET_POSITION=0 
+  MANUAL_STEPPER STEPPER=selector MOVE=-1.40
+  MANUAL_STEPPER STEPPER=selector SET_POSITION=0 
+  MANUAL_STEPPER STEPPER=selector MOVE=0.12
+  MANUAL_STEPPER STEPPER=selector SET_POSITION=0 
+  MANUAL_STEPPER STEPPER=chameleon SET_POSITION=0
+
+
+---->variable_ysplit_distance: 100  dğerini filamnet hub ölçünüze göre ayarlaryın yspit
+
+----->MANUAL_STEPPER STEPPER=selector MOVE=-1.40      ( bu değeri elle konsola deneyerek girnizi -1 den  -2 ye kadar deneyin selktör şaftı üzerindeki çıkıntının paralel konumu sizin başlangıç açınız olacakrtır.
+
+------------------------------------------------------------------------------------------
+
+[gcode_macro FILAMENT_CUT]
+description: Filament kesme, tamamen otomatik güvenli Z
+gcode:
+  {% set F = params.F|default(6000)|int %}
+  {% set current_z = printer.toolhead.position.z %}
+  {% set max_model_z = params.model_z|default(current_z)|float %}
+  {% set Z_safe = [current_z + 5, max_model_z + 5]|max %}
+
+  
+  G90 
+  G1 Z{Z_safe} F3000
+  G1 X290 Y290 F{F}
+
+  G92 E0
+  G1 E-2 F300
+  G92 E0
+  G1 E-90 F2500
+  G92 E0; 
+  G1 X300 Y290 F4000  
+  G1 X250 Y299 F4000
+  G1 X300 Y299 F4000
+  G1 X290 Y290 F4000
+  M117 "Filament kesildi"
+  G92 E0  
+
+filamnet kesme konumunuzu ve filamnet kesiciye çekme ölçünüzü yazıcınıza yapısına göre ayarlayınız
+
+
+----->  G1 E-90 F2500 
+nuzell ucu ile kesici bıcak arasındaki mesafenizi giriniz bu değer filamet ucundan 2 mm olacak şekilde ayarlanırsa filameet atığınız azalır
+
+kesme konumu ve kesme hareketleri
+---->G1 X290 Y290 F{F}
+
+  G1 X300 Y290 F4000  
+  G1 X250 Y299 F4000
+  G1 X300 Y299 F4000
+  G1 X290 Y290 F4000
+
+  -----------------------------------------------------------------------------
+
+[gcode_macro TOOL_SELECT]
+gcode:
+  {% set TOOL = params.TOOL|int %}
+  {% set SELECTOR_SPEED = 20 %}
+  M117 "Setting tool to TOOL{TOOL}"
+  
+ 
+  {% if TOOL == 0 %}
+    MANUAL_STEPPER stepper=selector MOVE=0
+  {% elif TOOL == 1 %}
+    MANUAL_STEPPER stepper=selector MOVE=-4.5
+  {% elif TOOL == 2 %}
+    MANUAL_STEPPER stepper=selector MOVE=-9.5
+  {% elif TOOL == 3 %}
+    MANUAL_STEPPER stepper=selector MOVE=-12.5
+  {% endif %}
+  SET_GCODE_VARIABLE MACRO=TOOL_INIT VARIABLE=tool VALUE={TOOL}
+
+
+her takımın konumunu konsoldan  MANUAL_STEPPER stepper=selector MOVE=0  manuel olarakdeğer girerek tespit edin
+t0 t1 t2 t3 takım yolu açılarını bulunuz ve sisteme kayıt ediniz. açı değerleinin sağlıklı olduğundan emin olun filamneti yol seçimleri belirlediğiniz bu değerlere göre yapılacaktır.
+
+--->MANUAL_STEPPER stepper=selector MOVE=0
+--->MANUAL_STEPPER stepper=selector MOVE=-4.5
+--->MANUAL_STEPPER stepper=selector MOVE=-9.5
+--->MANUAL_STEPPER stepper=selector MOVE=-12.5
+
+----------------------------------------------------------------------------------------------------------------------------------
+
+[gcode_macro TOOL_FREE]
+gcode:
+  {% set TOOL = params.TOOL|int %}
+   M117 "Free filament path for tool {TOOL}"
+  {% if TOOL == 0 %}
+    MANUAL_STEPPER stepper=selector MOVE=-12.5
+  {% elif TOOL == 1 %}
+    MANUAL_STEPPER stepper=selector MOVE=-9.5
+  {% elif TOOL == 2 %}
+    MANUAL_STEPPER stepper=selector MOVE=0
+  {% elif TOOL == 3 %}
+    MANUAL_STEPPER stepper=selector MOVE=-4.5
+  {% endif %}
+
+TOOL_SELECT makrosune göre  ters örüntülü  olarak değerleri girebilirsiniz.
+
+-----------------------------------------------------------------------------------------------------------------------
+
+[gcode_macro CHAMELEON_EXTRUDER_SMART_LOAD]
+
+
+    {% if TOOL == 0 or TOOL == 1 %}
+        MANUAL_STEPPER stepper=chameleon MOVE=-95 speed={SPEED} accel={ACC}
+        MANUAL_STEPPER stepper=chameleon SET_POSITION=0
+    {% else %}
+        MANUAL_STEPPER stepper=chameleon MOVE=95 speed={SPEED} accel={ACC}
+        MANUAL_STEPPER stepper=chameleon SET_POSITION=0
+    {% endif %}
+    
+---->MANUAL_STEPPER stepper=chameleon MOVE=-95 speed={SPEED} accel={ACC}
+---->MANUAL_STEPPER stepper=chameleon MOVE=95 speed={SPEED} accel={ACC}
+
+[gcode_macro TOOL_INIT] makrosu içindeki variable_ysplit_distance: 100 değerinden 5 ila 10 puan düşük giriniz
+
+----------------------------------------------------------------------------------------------------------------------------
+
+[gcode_macro EXTRUDER_UNLOAD]
+
+----> G1 E-42 F2000 
+filamnet kesici ile extuder dişilileri arasındaki mesafenizi giriniz ölçünüzden 10 puan falza giremniz yaralı olacaktır. örnek kesici ile dişili arasında 40mm ölçüm yaptı iseniz 50 mm giriniz
+
+
+----------------------------------------------------------------------------------------------------------------------------------
+[gcode_macro EXTRUDER_LOAD]
+
+---->G1 E108 F2000  extuder ile nuzel arasındakş  ölçünüzü girniz değerin tam olması filamnet  çapaklanmasını azaltacaktır normal ölçünüzden 1mm düşük girmenizi tavsiye ederim
+
+
 🎛 Dilimleyici (Slicer) Kurulumu
 
 Sistemin baskı ilk başladığında donanımı ve filament yollarını senkronize eden akıllı protokolümüz TOOL_INIT makrosudur.
